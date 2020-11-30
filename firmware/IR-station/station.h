@@ -11,9 +11,7 @@
 #define __STATION_H__
 
 #include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <ESP8266SSDP.h>
+#include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
 #include <DNSServer.h>
 #undef max(a,b)
@@ -21,7 +19,12 @@
 #include "config.h"
 #include "ir.h"
 #include "led.h"
-#include "ota.h"
+#include "myssdp.h"
+
+#if USE_ALEXA == true
+#include <fauxmoESP.h>
+#endif
+
 
 #define IR_STATION_MODE_SETUP   0
 #define IR_STATION_MODE_STATION 1
@@ -32,6 +35,8 @@
 
 const int DNS_PORT = 53;
 const int HTTP_PORT = 80;
+
+extern const char* _ssdp_schema_template;
 
 struct Signal {
   int id;
@@ -48,13 +53,30 @@ struct Schedule {
   time_t time;
 };
 
+#if USE_ALEXA == true
+struct Alexa {
+  int on;
+  int off;
+  int brighter;
+  int darker;
+  uint8_t value;
+  bool state;
+};
+#endif
+
 class IR_Station {
   public:
     IR_Station(int pin_ir_tx, int pin_ir_rx, int pin_red, int pin_green, int pin_blue):
-      indicator(pin_red, pin_green, pin_blue), server(HTTP_PORT), httpUpdater(true) {
+      indicator(pin_red, pin_green, pin_blue), server(HTTP_PORT)
+#if USE_ALEXA == true
+      , fauxmo()
+#endif
+    {
       ir.begin(pin_ir_tx, pin_ir_rx);
     }
     void begin();
+    //void startWebUI();
+    void stopWebUI();
     void reset(bool clean = true);
     void handle();
 
@@ -80,19 +102,25 @@ class IR_Station {
 
     IR ir;
     Indicator indicator;
-    ESP8266WebServer server;
-    ESP8266HTTPUpdateServer httpUpdater;
+    AsyncWebServer server;
     DNSServer dnsServer;
-    OTA ota;
+    bool run_save = false;
+
+#if USE_ALEXA == true
+    fauxmoESP fauxmo;
+    bool alexa_mode = false;
+    std::map<String, Alexa> alexaDevs;
+#endif
 
     void handleSchedule();
     int getNewId();
     int getNewScheduleId();
     Signal *getSignalById(int id);
     bool restore();
+    void safe_save();
     bool save();
 
-    void displayRequest();
+    void displayRequest(AsyncWebServerRequest *req);
     void attachSetupApi();
     void attachStationApi();
 };

@@ -1,0 +1,8 @@
+*.swp
+*.swo
+*.log
+*.json
+*.back
+.bundle/
+vendor/
+tags
