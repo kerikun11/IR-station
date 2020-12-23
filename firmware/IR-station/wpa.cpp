@@ -9,6 +9,8 @@
 
 #include "wpa.h"
 
+typedef uint8_t u8;
+
 /* defined in wpa_supplicant library */
 extern "C" int pbkdf2_sha1(
   const char * passphrase,
